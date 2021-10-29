@@ -10,7 +10,7 @@ namespace DvH.Extensions.Configuration
 {
     public static class EnvironmentUserSecrets
     {
-        public static IConfigurationBuilder AddUserSecrets<T>(this IConfigurationBuilder configuration, IHostEnvironment hostingEnvironment, bool reloadOnChange = false)
+        public static IConfigurationBuilder AddUserSecrets<T>(this IConfigurationBuilder configuration, IHostEnvironment hostingEnvironment, bool reloadOnChange = false, bool fallbackToDefaultSecretsFileName = true)
             where T : class
         {
             Assembly assembly = typeof(T).GetTypeInfo().Assembly;
@@ -38,9 +38,18 @@ namespace DvH.Extensions.Configuration
 
             string userSecretsId = attribute.UserSecretsId;
             string secretPath = PathHelper.GetSecretsPathFromSecretsId(userSecretsId);
-            string secretsFileName = $"secrets.{hostingEnvironment.EnvironmentName}.json";
             string directoryPath = Path.GetDirectoryName(secretPath);
-            
+            string secretsFileName = $"secrets.{hostingEnvironment.EnvironmentName}.json";
+
+            if (!File.Exists(Path.Combine(directoryPath, secretsFileName)))
+            {
+                if (!fallbackToDefaultSecretsFileName)
+                {
+                    throw new FileNotFoundException($"Could not find the environment user secrets file.", secretsFileName);
+                }
+                secretsFileName = "secrets.json";
+            }
+
             PhysicalFileProvider fileProvider = Directory.Exists(directoryPath)
                 ? new PhysicalFileProvider(directoryPath)
                 : null;
